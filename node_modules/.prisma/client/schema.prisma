@@ -1,0 +1,181 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model password_setup_tokens {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String    @db.Uuid
+  token      String    @unique
+  expires_at DateTime  @db.Timestamp(6)
+  used       Boolean   @default(false)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model roles {
+  id          Int       @id @default(autoincrement())
+  role_name   String    @unique @db.VarChar(50)
+  description String?
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  users       users[]
+}
+
+model users {
+  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                  String                  @db.VarChar(100)
+  email                 String                  @unique @db.VarChar(150)
+  password_hash         String?
+  role_id               Int
+  location              String?                 @db.VarChar(100)
+  manager               String?                 @db.VarChar(100)
+  pay_percentage        Decimal?                @db.Decimal(5, 2)
+  status                String                  @default("INVITED") @db.VarChar(20)
+  created_at            DateTime?               @default(now()) @db.Timestamp(6)
+  updated_at            DateTime?               @updatedAt @db.Timestamp(6)
+  dsa_data              dsa_data[]              @relation("UserDsaData")
+  password_setup_tokens password_setup_tokens[]
+  roles                 roles                   @relation(fields: [role_id], references: [id], onUpdate: NoAction)
+  validation_runs       validation_runs[]       @relation("UserValidationRuns")
+}
+
+model admin_data {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sr_no           Int?
+  customer_name   String           @db.VarChar(255)
+  app_no          String           @db.VarChar(100)
+  loan_amt        Decimal?         @db.Decimal(15, 2)
+  net_amt         Decimal?         @db.Decimal(15, 2)
+  bank            String?          @db.VarChar(100)
+  claim           String?          @db.VarChar(50)
+  product         String?          @db.VarChar(100)
+  location        String?          @db.VarChar(150)
+  month           String?          @db.VarChar(20)
+  exe             String?          @db.VarChar(100)
+  exe_head        String?          @db.VarChar(100)
+  partner         String?          @db.VarChar(100)
+  business_hub    String?          @db.VarChar(100)
+  status          String?          @db.VarChar(50)
+  sp_percent      Decimal?         @db.Decimal(15, 4)
+  sp_gross        Decimal?         @db.Decimal(15, 2)
+  bank_po         Decimal?         @db.Decimal(15, 2)
+  payment         String?          @db.VarChar(50)
+  dis_date        DateTime?        @db.Date
+  roi             Decimal?         @db.Decimal(6, 3)
+  tenure          Int?
+  gst_on_po       Decimal?         @db.Decimal(15, 2)
+  deduction_06    Decimal?         @db.Decimal(15, 4)
+  gvt_extra       Decimal?         @db.Decimal(15, 4)
+  booster         Decimal?         @db.Decimal(15, 4)
+  import_batch_id String?          @db.Uuid
+  created_at      DateTime?        @default(now()) @db.Timestamptz(6)
+  selected_month  DateTime?        @db.Date
+  sheet_name      String?          @db.VarChar(100)
+  validated_data  validated_data[]
+
+  @@index([app_no])
+  @@index([month])
+  @@index([app_no, month])
+  @@index([customer_name, month])
+}
+
+model dsa_data {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sr_no           Int?
+  customer_name   String           @db.VarChar(255)
+  app_no          String           @db.VarChar(100)
+  gross_amt       Decimal?         @db.Decimal(15, 2)
+  net_amt         Decimal?         @db.Decimal(15, 2)
+  bank            String?          @db.VarChar(100)
+  claim           String?          @db.VarChar(50)
+  product         String?          @db.VarChar(100)
+  location        String?          @db.VarChar(150)
+  month           String?          @db.VarChar(20)
+  exe             String?          @db.VarChar(100)
+  exe_head        String?          @db.VarChar(100)
+  dsa_code        String?          @db.VarChar(100)
+  business_hub    String?          @db.VarChar(100)
+  status          String?          @db.VarChar(50)
+  sp_percent      Decimal?         @db.Decimal(15, 4)
+  sp_gross        Decimal?         @db.Decimal(15, 2)
+  dsa_percent     Decimal?         @db.Decimal(15, 4)
+  dsa_gross       Decimal?         @db.Decimal(15, 2)
+  payment         String?          @db.VarChar(50)
+  profit          Decimal?         @db.Decimal(15, 2)
+  final_status    String?          @db.VarChar(50)
+  remark          String?
+  import_batch_id String?          @db.Uuid
+  created_at      DateTime?        @default(now()) @db.Timestamptz(6)
+  selected_month  DateTime?        @db.Date
+  sheet_name      String?          @db.VarChar(100)
+  user_id         String           @db.Uuid
+  claim_remark    String?
+  user            users            @relation("UserDsaData", fields: [user_id], references: [id], onDelete: Cascade)
+  validated_data  validated_data[]
+
+  @@index([app_no])
+  @@index([month])
+  @@index([user_id])
+  @@index([user_id, month])
+  @@index([app_no, month])
+  @@index([customer_name, month])
+}
+
+model validation_runs {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  month          String           @db.VarChar(20)
+  status         String           @default("PENDING") @db.VarChar(20)
+  total_admin    Int              @default(0)
+  total_dsa      Int              @default(0)
+  processed      Int              @default(0)
+  matched_app_no Int              @default(0)
+  matched_name   Int              @default(0)
+  unmatched      Int              @default(0)
+  started_at     DateTime?        @default(now()) @db.Timestamptz(6)
+  completed_at   DateTime?        @db.Timestamptz(6)
+  user_id        String           @db.Uuid
+  unmatched_data unmatched_data[]
+  validated_data validated_data[]
+  user           users            @relation("UserValidationRuns", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+}
+
+model validated_data {
+  id                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  admin_data_id     String?         @db.Uuid
+  dsa_data_id       String?         @db.Uuid
+  app_no            String          @db.VarChar(100)
+  customer_name     String?         @db.VarChar(255)
+  match_type        String          @db.VarChar(20)
+  month             String?         @db.VarChar(20)
+  validation_run_id String          @db.Uuid
+  validated_at      DateTime?       @default(now()) @db.Timestamptz(6)
+  sheet_name        String?         @db.VarChar(100)
+  admin_data        admin_data?     @relation(fields: [admin_data_id], references: [id])
+  dsa_data          dsa_data?       @relation(fields: [dsa_data_id], references: [id])
+  validation_run    validation_runs @relation(fields: [validation_run_id], references: [id], onDelete: Cascade)
+
+  @@index([validation_run_id])
+  @@index([app_no])
+}
+
+model unmatched_data {
+  id                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  source            String          @db.VarChar(10)
+  source_row_id     String          @db.Uuid
+  app_no            String?         @db.VarChar(100)
+  customer_name     String?         @db.VarChar(255)
+  month             String?         @db.VarChar(20)
+  reason            String?
+  validation_run_id String          @db.Uuid
+  flagged_at        DateTime?       @default(now()) @db.Timestamptz(6)
+  sheet_name        String?         @db.VarChar(100)
+  validation_run    validation_runs @relation(fields: [validation_run_id], references: [id], onDelete: Cascade)
+
+  @@index([validation_run_id])
+}
