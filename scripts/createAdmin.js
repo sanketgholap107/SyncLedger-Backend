@@ -6,9 +6,14 @@ dotenv.config();
 
 const createAdmin = async () => {
   try {
-    const email = 'admin@syncledger.com';
-    const password = 'Admin@123';
-    const name = 'Super Admin';
+    const email = process.env.ADMIN_EMAIL || 'admin@syncledger.com';
+    const password = process.env.ADMIN_PASSWORD;
+    const name = process.env.ADMIN_NAME || 'Super Admin';
+
+    if (!password) {
+      console.error('❌ ADMIN_PASSWORD environment variable is required. Aborting.');
+      process.exit(1);
+    }
 
     const existing = await prisma.users.findUnique({ where: { email } });
     if (existing) {
