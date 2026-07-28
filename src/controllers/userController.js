@@ -223,6 +223,34 @@ export const deactivateUser = async (req, res, next) => {
   }
 };
 
+export const deleteUser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const user = await prisma.users.findUnique({
+      where: { id }
+    });
+
+    if (!user) {
+      return errorResponse(res, 'User not found', 404);
+    }
+
+    await prisma.users.delete({
+      where: { id }
+    });
+
+    await logAction(req.user.userId, AUDIT_ACTIONS.USER_UPDATED, {
+      deletedUserId: id,
+      action: 'user_deleted'
+    });
+
+    return successResponse(res, null, 'User deleted successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+
 export const bulkDeactivateUsers = async (req, res, next) => {
   try {
     const { userIds } = req.body;
