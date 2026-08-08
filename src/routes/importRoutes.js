@@ -76,6 +76,9 @@ router.patch('/validate/record/:source/:id', authenticateToken, requireRole('Sup
 // GET  /api/admin/tentative-records — View tentative records
 router.get('/admin/tentative-records', authenticateToken, requireRole('Super Admin', 'Admin'), validationController.getTentativeRecords);
 
+// GET  /api/admin/dsa-tentative-records — View DSA tentative records
+router.get('/admin/dsa-tentative-records', authenticateToken, requireRole('Super Admin', 'Admin'), validationController.getDsaTentativeRecords);
+
 // GET  /api/admin/tentative-filters-data — Get list of values for filters
 router.get('/admin/tentative-filters-data', authenticateToken, requireRole('Super Admin', 'Admin'), validationController.getTentativeFiltersData);
 

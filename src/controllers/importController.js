@@ -143,36 +143,60 @@ export const importDsaData = async (req, res, next) => {
     const currentYear = now.getFullYear();
     const claimRemarkText = `CLAIM ASKED IN ${currentMonthName} ${currentYear}`;
 
-    const records = rows.map((r) => ({
-      user_id: userId,
-      sr_no: r['S NO.'] ? parseInt(r['S NO.']) : null,
-      customer_name: String(r['CUSTOMER NAME'] || r[' CUSTOMER NAME '] || '').trim(),
-      app_no: String(r['APP. NO'] || '').trim(),
-      gross_amt: toDecimal(r['GROSS AMT']),
-      net_amt: toDecimal(r['NET AMT']),
-      bank: String(r['BANK'] || r[' BANK '] || '').trim(),
-      claim: String(r['CLAIM'] || r[' CLAIM '] || '').trim(),
-      product: String(r['PRODUCT'] || r[' PRODUCT '] || '').trim(),
-      location: String(r['LOCATION'] || r[' LOCATION '] || '').trim(),
-      month: normalizeMonth(r['MONTH'] || r[' MONTH ']),
-      exe: String(r['EXE'] || r[' EXE '] || '').trim(),
-      exe_head: String(r['EXE HEAD'] || r[' EXE HEAD '] || '').trim(),
-      dsa_code: String(r['DSA CODE'] || r[' DSA CODE '] || '').trim(),
-      business_hub: String(r['BUSINESS HUB'] || r[' BUSINESS HUB '] || '').trim(),
-      status: String(r['STATUS'] || r[' STATUS '] || '').trim(),
-      sp_percent: toDecimal(r['SP %'] || r['  SP %  ']),
-      sp_gross: toDecimal(r['SP G.']),
-      dsa_percent: toDecimal(r['DSA %'] || r['  DSA %  ']),
-      dsa_gross: toDecimal(r['DSA G.']),
-      payment: String(r['PAYMENT'] || r[' PAYMENT '] || '').trim(),
-      profit: toDecimal(r['PROFIT'] || r[' PROFIT ']),
-      final_status: String(r['STATUS.1'] || r[' STATUS.1'] || '').trim(),
-      remark: String(r['REMARK'] || '').trim(),
-      sheet_name: String(targetSheet).trim(),
-      import_batch_id: batchId,
-      selected_month: selectedMonthDate,
-      claim_remark: claimRemarkText,
-    })).filter(r => r.app_no);
+    const nextMonthDate = new Date();
+    nextMonthDate.setMonth(now.getMonth() + 1);
+    const nextMonthPrefix = nextMonthDate.toLocaleString('default', { month: 'short' }).toUpperCase();
+    const currentYearShort = String(now.getFullYear()).slice(-2);
+
+    const processDsaMonth = (rawVal) => {
+      let val = normalizeMonth(rawVal);
+      if (!val) return null;
+      // If no digits in the month, append the current 2-digit year (e.g. .26)
+      if (!/\d/.test(val)) {
+        val = `${val.substring(0, 3)}.${currentYearShort}`;
+      }
+      return val;
+    };
+
+    const records = rows.map((r) => {
+      const processedMonth = processDsaMonth(r['month'] || r['MONTH'] || r[' MONTH ']);
+      let recordStatus = String(r['status'] || r['STATUS'] || r[' STATUS '] || '').trim();
+      
+      if (processedMonth && processedMonth.startsWith(nextMonthPrefix)) {
+        recordStatus = 'Tentative';
+      }
+
+      return {
+        user_id: userId,
+        sr_no: r['sr_no'] !== undefined ? parseInt(r['sr_no']) : (r['S NO.'] ? parseInt(r['S NO.']) : null),
+        customer_name: String(r['customer_name'] || r['CUSTOMER NAME'] || r[' CUSTOMER NAME '] || '').trim(),
+        app_no: String(r['app_no'] || r['APP. NO'] || '').trim(),
+        gross_amt: toDecimal(r['gross_amt'] !== undefined ? r['gross_amt'] : r['GROSS AMT']),
+        net_amt: toDecimal(r['net_amt'] !== undefined ? r['net_amt'] : r['NET AMT']),
+        bank: String(r['bank'] || r['BANK'] || r[' BANK '] || '').trim(),
+        claim: String(r['claim'] || r['CLAIM'] || r[' CLAIM '] || '').trim(),
+        product: String(r['product'] || r['PRODUCT'] || r[' PRODUCT '] || '').trim(),
+        location: String(r['location'] || r['LOCATION'] || r[' LOCATION '] || '').trim(),
+        month: processedMonth,
+        exe: String(r['exe'] || r['EXE'] || r[' EXE '] || '').trim(),
+        exe_head: String(r['exe_head'] || r['EXE HEAD'] || r[' EXE HEAD '] || '').trim(),
+        dsa_code: String(r['dsa_code'] || r['DSA CODE'] || r[' DSA CODE '] || '').trim(),
+        business_hub: String(r['business_hub'] || r['BUSINESS HUB'] || r[' BUSINESS HUB '] || '').trim(),
+        status: recordStatus,
+        sp_percent: toDecimal(r['sp_percent'] !== undefined ? r['sp_percent'] : (r['SP %'] || r['  SP %  '])),
+        sp_gross: toDecimal(r['sp_gross'] !== undefined ? r['sp_gross'] : r['SP G.']),
+        dsa_percent: toDecimal(r['dsa_percent'] !== undefined ? r['dsa_percent'] : (r['DSA %'] || r['  DSA %  '])),
+        dsa_gross: toDecimal(r['dsa_gross'] !== undefined ? r['dsa_gross'] : r['DSA G.']),
+        payment: String(r['payment'] || r['PAYMENT'] || r[' PAYMENT '] || '').trim(),
+        profit: toDecimal(r['profit'] !== undefined ? r['profit'] : (r['PROFIT'] || r[' PROFIT '])),
+        final_status: String(r['final_status'] || r['STATUS.1'] || r[' STATUS.1'] || '').trim(),
+        remark: String(r['remark'] || r['REMARK'] || '').trim(),
+        sheet_name: String(targetSheet).trim(),
+        import_batch_id: batchId,
+        selected_month: selectedMonthDate,
+        claim_remark: claimRemarkText,
+      };
+    }).filter(r => r.app_no);
 
     const CHUNK = 500;
     let inserted = 0;

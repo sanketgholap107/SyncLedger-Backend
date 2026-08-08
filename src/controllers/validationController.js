@@ -791,6 +791,65 @@ export const getTentativeRecords = async (req, res, next) => {
   }
 };
 
+// ─── GET /api/admin/dsa-tentative-records ───────────────────────────────────────
+export const getDsaTentativeRecords = async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 25;
+    const skip = (page - 1) * limit;
+
+    const { agentId, month, bank, status } = req.query;
+
+    const where = {
+      status: 'Tentative' // Primary filter for DSA tentative records
+    };
+
+    if (agentId && agentId !== 'ALL') {
+      where.user_id = agentId;
+    }
+
+    if (month && month !== 'ALL') {
+      where.month = month;
+    }
+
+    if (bank && bank !== 'ALL') {
+      where.bank = bank;
+    }
+
+    const [data, total] = await Promise.all([
+      prisma.dsa_data.findMany({
+        where,
+        include: {
+          user: {
+            select: { name: true }
+          }
+        },
+        skip,
+        take: limit,
+        orderBy: { created_at: 'desc' }
+      }),
+      prisma.dsa_data.count({ where })
+    ]);
+
+    const formattedData = data.map(record => ({
+      ...record,
+      agentName: record.user ? record.user.name : '—'
+    }));
+
+    res.json({
+      data: formattedData,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // ─── GET /api/admin/tentative-filters-data ──────────────────────────────────
 export const getTentativeFiltersData = async (req, res, next) => {
   try {
